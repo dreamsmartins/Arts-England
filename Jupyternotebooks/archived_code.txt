@@ -257,3 +257,29 @@ cleaned_df = pd.DataFrame(data)
 # Ensure correct dtypes, especially for dates and numbers
 cleaned_df['award_date'] = pd.to_datetime(cleaned_df['award_date'])
 cleaned_df['award_amount'] = pd.to_numeric(cleaned_df['award_amount'], errors='coerce')
+
+CREATE TABLE arts_awards (
+recipient_id SMALLINT UNSIGNED NULL AUTO_INCREMENT, 
+recipient NVARCHAR(150) NOT NULL , #50 before
+activity_name NVARCHAR(300) NOT NULL, #200 before 
+award_amount DECIMAL(10,0), 
+award_date DATE NOT NULL, 
+decision_month VARCHAR(15), 
+decision_quarter VARCHAR(2), 
+ace_area NVARCHAR(50), 
+local_authority NVARCHAR(50), 
+main_discipline VARCHAR(50), #20 before 
+strand VARCHAR(20), 
+time_limited_priority VARCHAR(25), 
+PRIMARY KEY (recipient_id))
+ 
+ENGINE=InnoDB DEFAULT CHARSET=utf8mb4; 
+#ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+
+LOAD DATA INFILE '/ArtsCouncil/raw_data/pga2024-25.csv'
+INTO TABLE arts_awards
+CHARACTER SET utf8mb4
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
