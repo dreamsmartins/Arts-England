@@ -1,0 +1,259 @@
+# Function to convert columns to appropriate data types
+#def fix_data_types(df):
+    #df_fixed = df.copy()
+    
+    # Convert potential numeric columns
+    #for col in df.select_dtypes(include=['object']).columns:
+        # Try to convert to numeric
+        #numeric_series = pd.to_numeric(df[col], errors='coerce')
+        
+        # If more than 80% of values converted successfully, keep the conversion
+        #if numeric_series.notnull().mean() > 0.8:
+            #df_fixed[col] = numeric_series
+            #print(f"Converted {col} to numeric")
+        
+        # Try to convert to datetime
+        #try:
+            #datetime_series = pd.to_datetime(df[col], errors='coerce')
+            # If more than 80% of values converted successfully, keep the conversion
+            #if datetime_series.notnull().mean() > 0.8:
+                #df_fixed[col] = datetime_series
+                #print(f"Converted {col} to datetime")
+        #except:
+            #pass
+            
+    #return df_fixed
+
+# Fix data types
+#cleaned_df = fix_data_types(cleaned_df)
+#display(cleaned_df.head(3))
+
+# Function to standardize text values
+def standardize_text(df):
+    df_std = df.copy()
+    
+    for col in df.select_dtypes(include=['object']).columns:
+        # Try to find a consistent format
+        values = df[col].dropna().astype(str)
+        
+        if len(values) == 0:
+            continue
+            
+        # Check if mostly lowercase
+        if sum(values.str.islower()) > 0.5 * len(values):
+            df_std[col] = df_std[col].str.lower()
+            print(f"Converted {col} to lowercase")
+        
+        # Check if mostly uppercase
+        elif sum(values.str.isupper()) > 0.5 * len(values):
+            df_std[col] = df_std[col].str.upper()
+            print(f"Converted {col} to uppercase")
+        
+        # Check if mostly title case
+        elif sum(values.str.istitle()) > 0.5 * len(values):
+            df_std[col] = df_std[col].str.title()
+            print(f"Converted {col} to title case")
+        
+        # Strip whitespace
+        df_std[col] = df_std[col].astype(str).str.strip()
+        
+    return df_std
+
+# Standardize text
+cleaned_df = standardize_text(cleaned_df)
+
+
+# Final validation checks specifically for arts_awards schema
+def validate_for_arts_awards_schema(df):
+    issues = []
+    
+    # Check required fields
+    required_fields = ['recipient', 'activity_name', 'award_date']
+    for field in required_fields:
+        if field not in df.columns:
+            issues.append(f"Required column '{field}' is missing")
+        elif df[field].isnull().any():
+            null_count = df[field].isnull().sum()
+            issues.append(f"Required column '{field}' has {null_count} NULL values")
+    
+    # Check field lengths
+    if 'recipient' in df.columns:
+        long_recipients = df['recipient'].astype(str).str.len() > 50
+        if long_recipients.any():
+            issues.append(f"{long_recipients.sum()} recipient names exceed 50 characters (NVARCHAR(50))")
+    
+    if 'activity_name' in df.columns:
+        long_activities = df['activity_name'].astype(str).str.len() > 200
+        if long_activities.any():
+            issues.append(f"{long_activities.sum()} activity names exceed 200 characters (NVARCHAR(200))")
+    
+    if 'decision_month' in df.columns:
+        long_months = df['decision_month'].astype(str).str.len() > 15
+        if long_months.any():
+            issues.append(f"{long_months.sum()} decision_month values exceed 15 characters (VARCHAR(15))")
+    
+    if 'decision_quarter' in df.columns:
+        long_quarters = df['decision_quarter'].astype(str).str.len() > 2
+        if long_quarters.any():
+            issues.append(f"{long_quarters.sum()} decision_quarter values exceed 2 characters (VARCHAR(2))")
+    
+    if 'ace_area' in df.columns:
+        long_areas = df['ace_area'].astype(str).str.len() > 50
+        if long_areas.any():
+            issues.append(f"{long_areas.sum()} ace_area values exceed 50 characters (NVARCHAR(50))")
+    
+    if 'local_authority' in df.columns:
+        long_authorities = df['local_authority'].astype(str).str.len() > 50
+        if long_authorities.any():
+            issues.append(f"{long_authorities.sum()} local_authority values exceed 50 characters (NVARCHAR(50))")
+    
+    if 'main_discipline' in df.columns:
+        long_disciplines = df['main_discipline'].astype(str).str.len() > 20
+        if long_disciplines.any():
+            issues.append(f"{long_disciplines.sum()} main_discipline values exceed 20 characters (VARCHAR(20))")
+    
+    # Check award_amount format
+    if 'award_amount' in df.columns:
+        # Check for decimal points (should be DECIMAL(10,0))
+        has_decimals = (~df['award_amount'].isna()) & (df['award_amount'] % 1 != 0)
+        if has_decimals.any():
+            issues.append(f"{has_decimals.sum()} award_amount values have decimals but schema is DECIMAL(10,0)")
+        
+        # Check for values exceeding 10 digits
+        large_values = (~df['award_amount'].isna()) & (df['award_amount'].abs() > 9999999999)
+        if large_values.any():
+            issues.append(f"{large_values.sum()} award_amount values exceed 10 digits (DECIMAL(10,0))")
+    
+    return issues
+
+# Final validation
+print("\n=== Final Data Validation ===")
+print(f"Final data shape: {cleaned_df.shape}")
+
+print("\nColumn data types:")
+display(cleaned_df.dtypes)
+
+# Check for MySQL schema compliance
+validation_issues = validate_for_arts_awards_schema(cleaned_df)
+if validation_issues:
+    print("\nSchema validation issues:")
+    for issue in validation_issues:
+        print(f"- {issue}")
+else:
+    print("\nNo schema validation issues detected")
+
+# Check for missing values
+print("\nMissing values check:")
+missing = cleaned_df.isnull().sum()
+if missing.sum() > 0:
+    display(missing[missing > 0])
+else:
+    print("No missing values")
+
+# Generate sample SQL statement
+print("\nSample INSERT statement for first row:")
+first_row = cleaned_df.iloc[0]
+cols = ", ".join(first_row.index)
+        vals = ", ".join([
+    "NULL" if pd.isna(val) and col != 'award_date' 
+    else f"'{val:%Y-%m-%d}'" if col == 'award_date' and not pd.isna(val)
+    else "NULL" if col == 'award_date' and pd.isna(val)
+    else f"'{val}'" if isinstance(val, str)
+    else str(val)
+    for col, val in first_row.items()
+])
+])
+print(f"INSERT INTO arts_awards ({cols}) VALUES ({vals});")
+
+# Export the cleaned dataframe
+output_path = 'cleaned_arts_awards.csv'
+cleaned_df.to_csv(output_path, index=False)
+print(f"\nCleaned data exported to {output_path}")
+
+# Export MySQL-ready SQL file (optional)
+sql_output_path = 'arts_awards_import.sql'
+with open(sql_output_path, 'w') as f:
+    # Write header
+    f.write("-- Arts Awards MySQL Import Script\n")
+    f.write(f"-- Generated on {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+    
+    # Write CREATE TABLE statement
+    f.write("""CREATE TABLE IF NOT EXISTS arts_awards (
+  recipient_id SMALLINT UNSIGNED NULL AUTO_INCREMENT PRIMARY KEY,
+  recipient NVARCHAR(150) NOT NULL,
+  activity_name NVARCHAR(300) NOT NULL,
+  award_amount DECIMAL(10,0),
+  award_date DATE NOT NULL,
+  decision_month VARCHAR(15),
+  decision_quarter VARCHAR(2),
+  ace_area NVARCHAR(50),
+  local_authority NVARCHAR(50),
+  main_discipline VARCHAR(50)
+);\n\n""")
+    
+    # Write INSERT statements (first 10 rows as example)
+    f.write("-- Sample INSERT statements (first 10 rows)\n")
+    for i, row in cleaned_df.head(10).iterrows():
+        cols = ", ".join([col for col in row.index if col != 'recipient_id'])
+        vals = ", ".join([
+            f"'{val:%Y-%m-%d}'" if col == 'award_date' and not pd.isna(val)
+            else "NULL" if pd.isna(val)
+            else f"'{str(val).replace(\"'\", \"''\")}'" if isinstance(val, str)
+            else str(int(val)) if isinstance(val, (int, float)) and val % 1 == 0
+            else str(val)
+            for col, val in row.items() if col != 'recipient_id'
+        ])
+        f.write(f"INSERT INTO arts_awards ({cols}) VALUES ({vals});\n")
+    
+    f.write("\n-- Add remaining rows using LOAD DATA INFILE or similar method\n")
+
+print(f"MySQL import script created at {sql_output_path}")
+
+
+import pandas as pd
+# Assuming 'display' is not needed, using print for broader compatibility.
+# from IPython.display import display # Uncomment if running in Jupyter/IPython
+
+# Define a placeholder dataframe for testing purposes
+# In a real scenario, load your actual cleaned_df here
+data = {
+    'recipient': ["Arts Org 1", "Performer O'Malley", "Long Recipient Name" * 4, None],
+    'activity_name': ["Exhibition A", "Theatre Production B", "Very Long Activity Name That Exceeds The Limit" * 5, "Activity C"],
+    'award_amount': [5000, 15000.00, 10000000000, 2500], # Added value > 10 digits
+    'award_date': [pd.Timestamp('2023-01-15'), pd.Timestamp('2023-02-20'), pd.Timestamp('2023-03-10'), pd.NaT],
+    'decision_month': ['January', 'February', 'March_Very_Long_Month', 'April'],
+    'decision_quarter': ['Q1', 'Q1', 'Q1_LONG', 'Q2'],
+    'ace_area': ["London", "Midlands", "South East" * 5, "North"],
+    'local_authority': ["City", "County", "District Authority Name Which Is Definitely Longer Than Fifty Characters", "Borough"],
+    'main_discipline': ["Visual Arts", "Theatre", "Combined Arts That Are Longer Than Fifty Characters Allowed", "Music"]
+}
+cleaned_df = pd.DataFrame(data)
+# Ensure correct dtypes, especially for dates and numbers
+cleaned_df['award_date'] = pd.to_datetime(cleaned_df['award_date'])
+cleaned_df['award_amount'] = pd.to_numeric(cleaned_df['award_amount'], errors='coerce')
+
+
+
+
+
+import pandas as pd
+# Assuming 'display' is not needed, using print for broader compatibility.
+# from IPython.display import display # Uncomment if running in Jupyter/IPython
+
+# Define a placeholder dataframe for testing purposes
+# In a real scenario, load your actual cleaned_df here
+data = {
+    'recipient': ["Arts Org 1", "Performer O'Malley", "Long Recipient Name" * 4, None],
+    'activity_name': ["Exhibition A", "Theatre Production B", "Very Long Activity Name That Exceeds The Limit" * 5, "Activity C"],
+    'award_amount': [5000, 15000.00, 10000000000, 2500], # Added value > 10 digits
+    'award_date': [pd.Timestamp('2023-01-15'), pd.Timestamp('2023-02-20'), pd.Timestamp('2023-03-10'), pd.NaT],
+    'decision_month': ['January', 'February', 'March_Very_Long_Month', 'April'],
+    'decision_quarter': ['Q1', 'Q1', 'Q1_LONG', 'Q2'],
+    'ace_area': ["London", "Midlands", "South East" * 5, "North"],
+    'local_authority': ["City", "County", "District Authority Name Which Is Definitely Longer Than Fifty Characters", "Borough"],
+    'main_discipline': ["Visual Arts", "Theatre", "Combined Arts That Are Longer Than Fifty Characters Allowed", "Music"]
+}
+cleaned_df = pd.DataFrame(data)
+# Ensure correct dtypes, especially for dates and numbers
+cleaned_df['award_date'] = pd.to_datetime(cleaned_df['award_date'])
+cleaned_df['award_amount'] = pd.to_numeric(cleaned_df['award_amount'], errors='coerce')
