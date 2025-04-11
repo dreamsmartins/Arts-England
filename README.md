@@ -19,7 +19,7 @@ The data was voluminous over 15,000 records, with limited processing power, I ha
 
 ## Data Cleaning Process and Transformation
 
-![Missing Values Heatmap](Data cleaning visualisations/Missing values heatmap.png)
+![Missing Values Heatmap](/Data%20cleaning%20visualisations/Missing%20values%20heatmap.png)
 
 I choose to use Python and the Pandas library to clean the data, while Microsoft Excel and Power BI are excellent tools, I don't have the compute power to use them and process the number of records efficiently. Python within a Jupyter notebook provides good structure for labelling, coding, and output.
 
@@ -45,7 +45,7 @@ Total funding by ACE area
 
 3. Timing
 Funding trend over 5 years
-![Funding Trend over time](Visualisations/Funding trends over time.png)
+![Funding Trend over time](/Visualisations/Funding%20trends%20over%20time.png)
 
 4. Multidimensional analysis
 ![Relationship between funding, discipline, and region](Visualisations/Relationship_btw_funding_disci_region.png)
