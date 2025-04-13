@@ -54,7 +54,7 @@ Funding trend over 5 years
 
 ### Funding distribution across disiplines
 
-![Funding Distribution Across Disciplines](Visualisations/Distribution of Awards amount.png)
+![Funding Distribution Across Disciplines](/Visualisations/Heatmap_awardsby%20discipline_count.png)
 
 Finding the distribution of grant awards across disciplines helps us determine what types of creatives are supported.  
 
@@ -62,7 +62,7 @@ Finding the distribution of grant awards across disciplines helps us determine w
 
 ![Funding distribution by disiplines across ACE area](Visualisations/Funding_distributionsbydisci_area.png)
 
-### Top 20 ACE areas for funding.
+### Top 20 ACE areas for funding
 
 ![Top 20 Funding Areas](Visualisations/Top20_funding_local_auth.png)
 
